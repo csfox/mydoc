@@ -16,3 +16,22 @@ git 上有 小问题 ， 再测试一次
 
 ![image-20230419133046753](../asserts/test01/image-20230419133046753.png)
 
+success.
+
+图床等以后再研究。
+
+成功的配置：
+
+![image-20230419134027370](../asserts/test01/image-20230419134027370.png)
+
+再次测试图床：
+
+!
+
+](https://raw.githubusercontent.com/csfox/pictures/main/image-20230419134555743.png)
+
+这咋不显示呢
+
+!
+
+](https://raw.githubusercontent.com/csfox/pictures/main/image-20230419134620772.png)
