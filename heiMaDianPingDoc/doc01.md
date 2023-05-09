@@ -138,7 +138,7 @@ public class LoginInterceptor implements HandlerInterceptor {
 }
 ```
 
-拦截器生效
+* 拦截器生效
 
 ```java
 @Configuration
@@ -190,6 +190,16 @@ public class MvcConfig implements WebMvcConfigurer {
 
 
 
+优点：
+
+1. 支持跨域
+
+2. 无状态
+3. 解耦
+4. 适合跨平台
+
+
+
 #### 1.7.1 key结构
 
 
@@ -211,8 +221,8 @@ key 用随机 token ，前端 token 存  localStorage。（最后还是 Redis �
 
 * 用户输入：手机号、验证码
 * Redis 拿验证码 与用户的比
-* 查手机号
-* 登录 或 创建用户
+* 查手机号 （ 数据库 ）
+* 登录 或 创建 用户
 * 用户信息存 Redis, key 为 token。（可用 String, hash）
 
 **校验登录状态**
@@ -423,7 +433,7 @@ key 用随机 token ，前端 token 存  localStorage。（最后还是 Redis �
 
 
 
-* 未命中返回空***（这样那我要是向数据库插入新数据怎么办？？）***（可能在前端对热点key和普通key有着不同的处理逻辑，和请求方法）
+* 未命中返回空***（这样那我要是向数据库插入新数据怎么办？？）***（可能在前端对热点key和普通key有着不同的请求路径）
 * 命中，判断是否过期
 
 ```java
@@ -512,5 +522,124 @@ key 用随机 token ，前端 token 存  localStorage。（最后还是 Redis �
     System.out.println("time = " + (end - begin));
 ```
 
-## 3.3 添加秒杀
+
+
+## 3.3 添加优惠券
+
+
+
+增加普通
+
+```java
+@PostMapping
+public Result addVoucher(@RequestBody Voucher voucher) {
+```
+
+增加秒杀
+
+```java
+@PostMapping("seckill")
+public Result addSeckillVoucher(@RequestBody Voucher voucher) {
+```
+
+保存秒杀
+
+```java
+ // 保存优惠券
+    save(voucher);
+    // 保存秒杀信息
+    SeckillVoucher seckillVoucher = new SeckillVoucher();
+    seckillVoucher.setVoucherId(voucher.getId());
+    seckillVoucher.setStock(voucher.getStock());
+    seckillVoucher.setBeginTime(voucher.getBeginTime());
+    seckillVoucher.setEndTime(voucher.getEndTime());
+    seckillVoucherService.save(seckillVoucher);
+    // 保存秒杀库存到Redis中
+    stringRedisTemplate.opsForValue().set(SECKILL_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
+}
+```
+
+
+
+## 3.4 实现秒杀下单
+
+
+
+下单时需要判断两点：
+
+* 秒杀是否开始或结束，如果尚未开始或已经结束则无法下单
+* 库存是否充足，不足则无法下单
+
+
+
+## 3.5 超卖
+
+
+
+加锁：
+
+* 乐观锁
+* 悲观锁
+
+**乐观锁** ：库存和查询的库存一致，只有一个人可以扣减成功，成功率低：改进：验证stock > 0 （数据库行级锁）
+
+```java
+boolean success = seckillVoucherService.update()
+            .setSql("stock= stock -1") //set stock = stock -1
+            .eq("voucher_id", voucherId).eq("stock",voucher.getStock()).update(); //where id = ？ and stock = ?
+```
+
+```java
+ .eq("voucher_id", voucherId).update().gt("stock",0); //where id = ? and stock > 0
+```
+
+
+
+## 3.6 一人一单
+
+
+
+判断订单表里是否已经有用户，有了就不让买了。（ count() > 0 ）
+
+
+
+只让一个相同id进来操作：
+
+![image-20230420112114743](../asserts/doc01/image-20230420112114743.png)
+
+1. intern()
+
+toString() 会 new 不同的对象，要使用 intern() ， 从常量池拿数据，保证锁的是同一把。
+
+2. 用代理对象
+
+事务失效：在同一个类中，一个方法调用另一个加事务标签的方法时，事务会失效，因为实际是创建了代理去执行事务。
+
+	3. 将过程包裹起来
+
+锁会包裹起来。
+
+
+
+## 3.7 集群并发
+
+
+
+锁会失效
+
+每个 tomcat 都有自己的 jvm，不同服务器中，锁的对象不同，会syn失效
+
+
+
+## 4.0 分布式锁
+
+
+
+可见性，互斥，高可用，高性能，安全性
+
+Redis: setnx
+
+Zookeeper: 
+
+
 
